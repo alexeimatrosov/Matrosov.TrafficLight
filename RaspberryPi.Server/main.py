@@ -28,27 +28,20 @@ class TrafficLight:
         self._amber.value = v & 0x02
         self._green.value = v & 0x01
 
-class Mode:
-    def __init__(self, traffic_light):
-        self._traffic_light = traffic_light
-
-    def enter(self):
-        pass
-
-    def exit(self):
-        pass
-
-class FixedMode(Mode):
+class FixedMode:
     def __init__(self, traffic_light, lights):
-        super().__init__(traffic_light)
+        self._traffic_light = traffic_light
         self._lights = lights
     
     def enter(self):
         self._traffic_light.set(self._lights)
 
-class SequenceMode(Mode):
+    def exit(self):
+        pass
+
+class SequenceMode:
     def __init__(self, traffic_light, lights_intervals):
-        super().__init__(traffic_light)
+        self._traffic_light = traffic_light
         self._on_activated = threading.Event()
         self._lights_intervals_iterator = iter(lights_intervals)
         self._thread = threading.Thread(target=self._thread_start)
@@ -66,9 +59,9 @@ class SequenceMode(Mode):
     def exit(self):
         self._on_activated.clear()        
 
-class UdpListenerMode(Mode):
+class UdpListenerMode:
     def __init__(self, traffic_light, address, port, update_timeout):
-        super().__init__(traffic_light)
+        self._traffic_light = traffic_light
         self._lights = Lights.AMBER
         self._is_active = False
         self._is_active_lock = threading.Lock()
@@ -136,27 +129,28 @@ def random_sequence_lights():
     while True:
         yield (Lights(random.randrange(len(Lights))), random.uniform(0.1, 0.5))
 
-traffic_light = TrafficLight(14, 15, 18)
-modes = [
-            UdpListenerMode(traffic_light, '', 2806, 16.0),
-            SequenceMode(traffic_light, random_sequence_lights()),
-            SequenceMode(traffic_light, looped_sequence(list(map(lambda x: (x, 0.5), Lights)))),
-            SequenceMode(traffic_light, looped_sequence([
-                (Lights.RED, 5.0),
-                (Lights.RED_AMBER, 1.5),
-                (Lights.GREEN, 5.0),
-                (Lights.NONE, 0.75),
-                (Lights.GREEN, 0.75),
-                (Lights.NONE, 0.75),
-                (Lights.GREEN, 0.75),
-                (Lights.NONE, 0.75),
-                (Lights.GREEN, 0.75),
-                (Lights.AMBER, 1.5),
-            ])),
-            FixedMode(traffic_light, Lights.ALL),
-            FixedMode(traffic_light, Lights.NONE)
-        ]
-controller = ModesController(Button(23), modes)
-controller.start()
+if __name__ == "__main__":
+    traffic_light = TrafficLight(14, 15, 18)
+    modes = [
+                UdpListenerMode(traffic_light, '', 2806, 16.0),
+                SequenceMode(traffic_light, random_sequence_lights()),
+                SequenceMode(traffic_light, looped_sequence(list(map(lambda x: (x, 0.5), Lights)))),
+                SequenceMode(traffic_light, looped_sequence([
+                    (Lights.RED, 5.0),
+                    (Lights.RED_AMBER, 1.5),
+                    (Lights.GREEN, 5.0),
+                    (Lights.NONE, 0.75),
+                    (Lights.GREEN, 0.75),
+                    (Lights.NONE, 0.75),
+                    (Lights.GREEN, 0.75),
+                    (Lights.NONE, 0.75),
+                    (Lights.GREEN, 0.75),
+                    (Lights.AMBER, 1.5),
+                ])),
+                FixedMode(traffic_light, Lights.ALL),
+                FixedMode(traffic_light, Lights.NONE)
+            ]
+    controller = ModesController(Button(23), modes)
+    controller.start()
 
-pause()
+    pause()
